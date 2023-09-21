@@ -1,0 +1,62 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current file (local)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Resume (local)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/fidelity/main.py",
+            "args": [
+                "resume",
+                "${input:run_id}"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: main.py (local)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/fidelity/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: main.py (SLURM)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/submit_slurm.py",
+            "args": [
+                "${workspaceFolder}/src/fidelity/main.py"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Sweep (SLURM)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/submit_slurm.py",
+            "args": [
+                "${workspaceFolder}/src/fidelity/sweep.py"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ],
+    "inputs": [
+        {
+            "id": "run_id",
+            "description": "W&B Run ID",
+            "type": "promptString"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+numpy
+torch
+torchvision
+torchmetrics[image]
+tqdm
+wandb
+pyyaml

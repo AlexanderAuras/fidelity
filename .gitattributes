@@ -1,0 +1,11 @@
+*        text
+
+*.py     text diff=python
+*.pyi    text diff=python
+*.ipynb  text
+
+*.npy    binary filter=lfs diff=lfs merge=lfs
+*.npz    binary filter=lfs diff=lfs merge=lfs
+*.pth    binary filter=lfs diff=lfs merge=lfs
+*.pickle binary filter=lfs diff=lfs merge=lfs
+*.pyc    binary filter=lfs diff=lfs merge=lfs export-ignore

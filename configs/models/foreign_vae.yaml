@@ -1,0 +1,5 @@
+name: ForeignVAE
+latent_size: 20
+latent_noise_delta: 0.0
+nef: 128
+ndf: 128
