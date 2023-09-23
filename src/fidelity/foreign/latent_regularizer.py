@@ -15,13 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import matplotlib
 import torch
 
 from .utils import compute_empirical_covariance, compute_gmm_covariance
-
-
-matplotlib.use("Agg")
 
 
 def mean_squared_kolmogorov_smirnov_distance_gmm_broadcasting(embedding_matrix: torch.Tensor, gmm_centers: torch.Tensor, gmm_std: float) -> torch.Tensor:

@@ -11,7 +11,7 @@ from fidelity.data.transform_dataset import TransformDataset
 
 
 _GENERATOR_STATES: Dict[str, torch.Tensor] = {}
-_DATASET_DIR = Path("/data/datasets")
+_DATASET_DIR = Path("datasets")
 
 
 def _reproducible_random_split(dataset_name: str, dataset: torch.utils.data.Dataset[Any], split: float) -> Tuple[torch.utils.data.Dataset[Any], torch.utils.data.Dataset[Any]]:

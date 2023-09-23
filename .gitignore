@@ -1,4 +1,9 @@
+/datasets
+
 /artifacts/
+/build/
+/datasets/
+/logs/
 
 __pycache__/
 *.egg-info/

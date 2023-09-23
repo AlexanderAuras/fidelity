@@ -84,8 +84,6 @@ def main() -> None:
             resume="never",
         )
         logging.getLogger(PROJECT_NAME).info(f"Starting run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
-        logging.getLogger(PROJECT_NAME).info("Logging code to wandb")
-        cast(wandb.sdk.wandb_run.Run, wandb.run).log_code(".", include_fn=lambda path: path.endswith(".py") or path.endswith(".yaml"))
 
     #### Setup determinism ####
     if wandb.config["seed"] is not None:
@@ -120,9 +118,10 @@ def main() -> None:
     logging.getLogger(PROJECT_NAME).debug(f"  Constructing model {wandb.config['model']['name']}")
     model = build_model()
     model = model.to(wandb.config["device"])
-    if hasattr(torch, "compile"):
-        logging.getLogger(PROJECT_NAME).debug("  Compiling model")
-        model = torch.compile(model)  # type: ignore
+    # TODO Debug
+    # if hasattr(torch, "compile"):
+    #    logging.getLogger(PROJECT_NAME).debug("  Compiling model")
+    #    model = torch.compile(model)  # type: ignore
     # logging.getLogger(PROJECT_NAME).debug("  Distributing model")
     # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=?, output_device=?)  #TODO Launch in parallel, distribute data, distribute model, sync metrics
     logging.getLogger(PROJECT_NAME).info("Starting wandb model watchdog")
