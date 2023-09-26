@@ -80,7 +80,8 @@ def compute_gmm_covariance(gmm_centers: torch.Tensor, gmm_std: float) -> Tuple[t
         center_mean = gmm_centers[component, :].reshape(dimension, 1)
         if conditional_expectation is None:
             conditional_expectation = (1 / num_gmm_centers) * torch.mm(center_mean, center_mean.t())
-        conditional_expectation += (1 / num_gmm_centers) * torch.mm(center_mean, center_mean.t())
+        else:
+            conditional_expectation += (1 / num_gmm_centers) * torch.mm(center_mean, center_mean.t())
     # Expected conditional variance equals component_cov, since all components are weighted equally,
     # and all component covariances are the same.
     return component_cov.cuda(), component_cov.cuda() + cast(torch.Tensor, conditional_expectation).cuda()

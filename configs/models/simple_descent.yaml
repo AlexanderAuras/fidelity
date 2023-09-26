@@ -1,0 +1,4 @@
+name: SimpleDescent
+iterations: 2000
+lr: 1e-1
+img_weight: 5e-4

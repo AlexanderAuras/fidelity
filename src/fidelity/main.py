@@ -6,7 +6,7 @@ import tempfile
 import warnings
 from pathlib import Path
 from types import FrameType
-from typing import Optional, cast
+from typing import Any, Optional, Sequence, Tuple, cast
 
 import torch
 import torch.utils.data
@@ -74,14 +74,15 @@ def main() -> None:
             project=PROJECT_NAME,
             id=wandb.util.generate_id(),
             group=None,
-            job_type="training",
             tags=[],
             config=load_config(CONFIG_PATH),
             dir=tempfile.gettempdir(),
+            save_code=True,
+            settings=wandb.Settings(code_dir=str(Path(__file__).parents[1])),
             anonymous="never",
             mode="online",
             force=True,
-            resume="never",
+            resume="never",  # TODO Check
         )
         logging.getLogger(PROJECT_NAME).info(f"Starting run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
 
@@ -90,13 +91,20 @@ def main() -> None:
         logging.getLogger(PROJECT_NAME).info(f"Setting up determinism with seed {wandb.config['seed']}")
         setup_determinism(wandb.config["seed"])
 
+    if not wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).info(f"ATTENTION: Executing run without learning phase!")
+
     #### Load datasets ####
     logging.getLogger(PROJECT_NAME).info("Loading datasets")
-    logging.getLogger(PROJECT_NAME).debug("Loading train dataset")
-    logging.getLogger(PROJECT_NAME).debug(f"  Loading dataset {wandb.config['data']['train_dataset']['name']}")
-    train_dataset = load_dataset("train")
-    logging.getLogger(PROJECT_NAME).debug("Loading validation datasets")
-    val_datasets = {dataset_config["name"]: logging.getLogger(PROJECT_NAME).debug(f"  Loading {dataset_config['name']}") or load_dataset("val", i) for i, dataset_config in enumerate(wandb.config["data"]["val_datasets"])}
+    if wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).debug("Loading train dataset")
+        logging.getLogger(PROJECT_NAME).debug(f"  Loading dataset {wandb.config['data']['train_dataset']['name']}")
+        train_dataset = load_dataset("train")
+        logging.getLogger(PROJECT_NAME).debug("Loading validation datasets")
+        val_datasets = {dataset_config["name"]: logging.getLogger(PROJECT_NAME).debug(f"  Loading {dataset_config['name']}") or load_dataset("val", i) for i, dataset_config in enumerate(wandb.config["data"]["val_datasets"])}
+    else:
+        train_dataset = None
+        val_datasets = {}
     logging.getLogger(PROJECT_NAME).debug("Loading test datasets")
     test_datasets = {dataset_config["name"]: logging.getLogger(PROJECT_NAME).debug(f"  Loading {dataset_config['name']}") or load_dataset("test", i) for i, dataset_config in enumerate(wandb.config["data"]["test_datasets"])}
     logging.getLogger(PROJECT_NAME).debug("Loading prediction datasets")
@@ -104,10 +112,14 @@ def main() -> None:
 
     #### Create dataloaders ####
     logging.getLogger(PROJECT_NAME).info("Creating dataloaders")
-    logging.getLogger(PROJECT_NAME).debug("Creating train dataloader")
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=wandb.config["training"]["grad_batch_size"], shuffle=True, drop_last=False, generator=torch.Generator(), worker_init_fn=lambda _: setup_determinism(torch.initial_seed()))
-    logging.getLogger(PROJECT_NAME).debug("Creating validation dataloaders")
-    val_dataloaders = {name: torch.utils.data.DataLoader(dataset, batch_size=wandb.config["training"]["nograd_batch_size"], shuffle=False, drop_last=False, generator=torch.Generator(), worker_init_fn=lambda _: setup_determinism(torch.initial_seed())) for name, dataset in val_datasets.items()}
+    if wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).debug("Creating train dataloader")
+        train_dataloader = torch.utils.data.DataLoader(cast(torch.utils.data.Dataset[Tuple[Sequence[Any], Sequence[Any]]], train_dataset), batch_size=wandb.config["training"]["grad_batch_size"], shuffle=True, drop_last=False, generator=torch.Generator(), worker_init_fn=lambda _: setup_determinism(torch.initial_seed()))
+        logging.getLogger(PROJECT_NAME).debug("Creating validation dataloaders")
+        val_dataloaders = {name: torch.utils.data.DataLoader(dataset, batch_size=wandb.config["training"]["nograd_batch_size"], shuffle=False, drop_last=False, generator=torch.Generator(), worker_init_fn=lambda _: setup_determinism(torch.initial_seed())) for name, dataset in val_datasets.items()}
+    else:
+        train_dataloader = None
+        val_dataloaders = {}
     logging.getLogger(PROJECT_NAME).debug("Creating test dataloaders")
     test_dataloaders = {name: torch.utils.data.DataLoader(dataset, batch_size=wandb.config["training"]["nograd_batch_size"], shuffle=False, drop_last=False, generator=torch.Generator(), worker_init_fn=lambda _: setup_determinism(torch.initial_seed())) for name, dataset in test_datasets.items()}
     logging.getLogger(PROJECT_NAME).debug("Creating prediction dataloaders")
@@ -128,11 +140,15 @@ def main() -> None:
     wandb.watch(model, log_freq=100, log_graph=True)
 
     #### Build optimizer, learning rate scheduler, loss function ####
-    logging.getLogger(PROJECT_NAME).info("Building optimizer")
-    optimizer = build_optimizer(model)
-    if "lr_scheduler" in wandb.config["training"]:
-        logging.getLogger(PROJECT_NAME).info("Building learing rate scheduler")
-    lr_scheduler = build_lr_scheduler(optimizer)
+    if wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).info("Building optimizer")
+        optimizer = build_optimizer(model)
+        if "lr_scheduler" in wandb.config["training"]:
+            logging.getLogger(PROJECT_NAME).info("Building learing rate scheduler")
+        lr_scheduler = build_lr_scheduler(optimizer)
+    else:
+        optimizer = None
+        lr_scheduler = None
     logging.getLogger(PROJECT_NAME).info("Building loss function")
     loss_fn = build_loss_fn()
 
@@ -149,20 +165,22 @@ def main() -> None:
             torch.save(
                 {
                     "RNGs": get_rng_states(),
-                    "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, train_dataloader.sampler).generator).get_state(),
-                    "val_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
                     "test_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
                     "pred_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
                     "trainer": trainer.state_dict(),
+                    **(
+                        {
+                            "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).get_state(),
+                            "val_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                        }
+                        if wandb.config["learned"]
+                        else {}
+                    ),
                 },
                 file,
             )
         wandb.log_artifact(artifact, aliases=["latest"])
-        logging.getLogger(PROJECT_NAME).debug("  Resubmitting SLRUM job")
-        try:
-            subprocess.run(["sbatch", "???"])
-        except:
-            pass
+        wandb.mark_preempting()
         logging.getLogger(PROJECT_NAME).info("Done")
         exit(-1)
 
@@ -180,8 +198,9 @@ def main() -> None:
         load_rng_states(state["RNGs"])
         logging.getLogger(PROJECT_NAME).debug("  Loading Trainer state")
         trainer.load_state_dict(state["trainer"])
-        logging.getLogger(PROJECT_NAME).debug("  Loading dataloader states")
-        cast(torch.Generator, cast(torch.utils.data.RandomSampler, train_dataloader.sampler).generator).set_state(state["train_dataloader"])
+        if wandb.config["learned"]:
+            logging.getLogger(PROJECT_NAME).debug("  Loading dataloader states")
+            cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).set_state(state["train_dataloader"])
     else:
         logging.getLogger(PROJECT_NAME).debug("Saving initial state")
         artifact = wandb.Artifact("state", type="checkpoint")
@@ -189,25 +208,38 @@ def main() -> None:
             torch.save(
                 {
                     "RNGs": get_rng_states(),
-                    "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, train_dataloader.sampler).generator).get_state(),
+                    "test_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                    "pred_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
                     "trainer": trainer.state_dict(),
+                    **(
+                        {
+                            "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).get_state(),
+                            "val_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                        }
+                        if wandb.config["learned"]
+                        else {}
+                    ),
                 },
                 file,
             )
         wandb.log_artifact(artifact, aliases=["latest", "initial", *[f"best-{name}" for name in val_dataloaders.keys()]])
 
     #### Train ####
-    logging.getLogger(PROJECT_NAME).info("Starting training")
-    trainer.train(
-        train_dataloader,
-        val_dataloaders,
-        max_epochs=wandb.config["training"]["epochs"],
-        additional_state_fn=lambda: {
-            "RNGs": get_rng_states(),
-            "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, train_dataloader.sampler).generator).get_state(),
-        },
-    )
-    logging.getLogger(PROJECT_NAME).info("Training done")
+    if wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).info("Starting training")
+        trainer.train(
+            cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader),
+            val_dataloaders,
+            max_epochs=wandb.config["training"]["epochs"],
+            additional_state_fn=lambda: {
+                "RNGs": get_rng_states(),
+                "test_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                "pred_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).get_state(),
+                "val_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+            },
+        )
+        logging.getLogger(PROJECT_NAME).info("Training done")
 
     #### Export training results ####
     logging.getLogger(PROJECT_NAME).debug("Saving latest state")
@@ -216,19 +248,28 @@ def main() -> None:
         torch.save(
             {
                 "RNGs": get_rng_states(),
-                "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, train_dataloader.sampler).generator).get_state(),
-                "trainer": trainer.state_dict(),
+                "test_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                "pred_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                **(
+                    {
+                        "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).get_state(),
+                        "val_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                    }
+                    if wandb.config["learned"]
+                    else {}
+                ),
             },
             file,
         )
     wandb.log_artifact(artifact, aliases=["latest"])
-    logging.getLogger(PROJECT_NAME).debug("Exporting model weights")
-    artifact = wandb.Artifact("ONNX", type="onnx")
-    with artifact.new_file("weights.onnx", mode="wb") as file:
-        x = next(iter(val_dataloaders[next(iter(val_dataloaders.keys()))]))[0]
-        x = tuple([f.to(wandb.config["device"]) if isinstance(f, torch.Tensor) else f for f in x])
-        torch.onnx.export(model, x, file)
-    wandb.log_artifact(artifact, aliases=["latest"])
+    if wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).debug("Exporting model weights")
+        artifact = wandb.Artifact("ONNX", type="onnx")
+        with artifact.new_file("weights.onnx", mode="wb") as file:
+            x = next(iter(val_dataloaders[next(iter(val_dataloaders.keys()))]))[0]
+            x = tuple([f.to(wandb.config["device"]) if isinstance(f, torch.Tensor) else f for f in x])
+            torch.onnx.export(model, x, file)
+        wandb.log_artifact(artifact, aliases=["latest"])
 
     #### Run tests and predictions ####
     logging.getLogger(PROJECT_NAME).info("Starting testing")

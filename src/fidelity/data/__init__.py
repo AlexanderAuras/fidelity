@@ -6,6 +6,8 @@ import torchvision
 import wandb
 
 from fidelity.data.feature_mod_dataset import FeatureModificationDataset
+from fidelity.data.fixed_noise_dataset import FixedNoiseDataset
+from fidelity.data.noise import AWGN
 from fidelity.data.random_vec_dataset import RandomVecDataset
 from fidelity.data.transform_dataset import TransformDataset
 
@@ -23,19 +25,6 @@ def _reproducible_random_split(dataset_name: str, dataset: torch.utils.data.Data
     len1 = int(len(cast(Sized, dataset)) * split)
     len2 = len(cast(Sized, dataset)) - int(len(cast(Sized, dataset)) * split)
     return cast(Tuple[torch.utils.data.Dataset[Any], torch.utils.data.Dataset[Any]], torch.utils.data.random_split(dataset, [len1, len2], generator))
-
-
-def _convert_to_autoencoder_dataset(dataset: torch.utils.data.Dataset[Any], dataset_config: Dict[str, Any], subset: Union[Literal["train"], Literal["val"], Literal["test"], Literal["pred"]]):
-    dataset = FeatureModificationDataset(dataset, 0, 0)
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Lambda(lambda x: torchvision.transforms.Grayscale()(x[0:3]) if x.shape[0] == 4 else (torchvision.transforms.Grayscale()(x) if x.shape[0] == 3 else x[0:1])),
-            torchvision.transforms.Resize(wandb.config["data"]["img_size"], antialias=cast(str, True)),
-            torchvision.transforms.CenterCrop(wandb.config["data"]["img_size"]),
-        ]
-    )
-    return TransformDataset(dataset, {0: transform}, {0: transform})
 
 
 def load_dataset(subset: Union[Literal["train"], Literal["val"], Literal["test"], Literal["pred"]], idx: Optional[int] = None) -> torch.utils.data.Dataset[Tuple[Any, Any]]:
@@ -94,4 +83,15 @@ def load_dataset(subset: Union[Literal["train"], Literal["val"], Literal["test"]
         case _ as ds:
             raise ValueError(f"Unknown dataset {ds}")
 
-    return _convert_to_autoencoder_dataset(dataset, dataset_config, subset)
+    unified_dataset = FeatureModificationDataset(dataset, 0, 0)
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Lambda(lambda x: torchvision.transforms.Grayscale()(x[0:3]) if x.shape[0] == 4 else (torchvision.transforms.Grayscale()(x) if x.shape[0] == 3 else x[0:1])),
+            torchvision.transforms.Resize(wandb.config["data"]["img_size"], antialias=cast(str, True)),
+            torchvision.transforms.CenterCrop(wandb.config["data"]["img_size"]),
+        ]
+    )
+    transform_dataset = TransformDataset(unified_dataset, {0: transform}, {0: transform})
+    noisy_dataset = FixedNoiseDataset(transform_dataset, AWGN(wandb.config["data"]["noise_level"]), input_=(0,))
+    return noisy_dataset

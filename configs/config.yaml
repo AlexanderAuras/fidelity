@@ -1,27 +1,28 @@
 seed: 1234
 device: cuda:0
+learned: false
 
 data:
   img_size: [32, 32]
+  noise_level: 0.05
   train_dataset: !include datasets/mnist.yaml
   val_datasets:  [!include datasets/mnist.yaml, !include datasets/kuzushiji.yaml, !include datasets/fashion_mnist.yaml]
   test_datasets: [!include datasets/mnist.yaml, !include datasets/kuzushiji.yaml, !include datasets/fashion_mnist.yaml]
-  pred_datasets: [!include datasets/random_vec.yaml]
+  pred_datasets: [!include datasets/mnist.yaml, !include datasets/kuzushiji.yaml, !include datasets/fashion_mnist.yaml] #[!include datasets/random_vec.yaml]
 
-model: !include models/autoencoder.yaml #!include models/foreign_vae.yaml
+model: !include models/simple_descent.yaml #models/foreign_vae.yaml #models/autoencoder.yaml
 
 training:
   grad_batch_size: 64
   nograd_batch_size: !ref training.grad_batch_size
   loss_fn:
-    name: ForeignVAELoss
+    name: MSE #ForeignVAELoss
     img_loss_weight: 5e-4
-    latent_dim: !ref model.latent_size
-    num_clusters: 10
+    latent_dim: 1024 #!ref model.latent_size
+    num_clusters: 1 #10
   optimizer:
     name: Adam
     lr: 1e-3
   lr_scheduler:
     name: ReduceLROnPlateau
-  loss_function: MSE
-  epochs: 10
+  epochs: 0

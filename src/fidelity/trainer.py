@@ -17,8 +17,8 @@ class Trainer:
     def __init__(
         self,
         model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        lr_scheduler: torch.optim.lr_scheduler._LRScheduler,  # type: ignore
+        optimizer: Optional[torch.optim.Optimizer],
+        lr_scheduler: Optional[torch.optim.lr_scheduler._LRScheduler],  # type: ignore
         loss_fn: LossFunc,
         experiment_logger: ExperimentLogger,
     ) -> None:
@@ -76,7 +76,8 @@ class Trainer:
                         torch.save({"trainer": self.state_dict(), **additional_state_fn()}, file)
                     wandb.log_artifact(artifact, aliases=["latest", f"best-{name}"])
             # Update learning rate
-            self.__lr_scheduler.step()
+            if self.__lr_scheduler is not None:
+                self.__lr_scheduler.step()
 
     def __train_epoch(
         self,
@@ -85,6 +86,7 @@ class Trainer:
         max_epochs: Optional[int],
         max_duration: Optional[timedelta],
     ) -> bool:
+        assert wandb.config["learned"]
         self.__model.train()
         # Load old state on resume
         iter_ = enumerate(train_dataloader)
@@ -105,9 +107,9 @@ class Trainer:
                         z = (z,)
                     loss = cast(torch.Tensor, sum(self.__loss_fn(z, y)))
                 # Backward
-                self.__optimizer.zero_grad()
+                cast(torch.optim.Optimizer, self.__optimizer).zero_grad()
                 loss.backward()
-                self.__optimizer.step()
+                cast(torch.optim.Optimizer, self.__optimizer).step()
                 # Log
                 self.__experiment_logger.post_train_batch(i, x, y, z)
                 # Check stop conditions
@@ -238,8 +240,8 @@ class Trainer:
     def state_dict(self) -> Dict[str, Any]:
         return {
             "model": self.__model.state_dict(),
-            "optimizer": self.__optimizer.state_dict(),
-            "lr_scheduler": self.__lr_scheduler.state_dict(),
+            "optimizer": self.__optimizer.state_dict() if self.__optimizer is not None else {},
+            "lr_scheduler": self.__lr_scheduler.state_dict() if self.__lr_scheduler is not None else {},
             "epoch": self.__epoch,
             "step": self.__step,
             "duration": self.__duration,
@@ -255,8 +257,10 @@ class Trainer:
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         self.__model.load_state_dict(state_dict["model"])
-        self.__optimizer.load_state_dict(state_dict["optimizer"])
-        self.__lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
+        if self.__optimizer is not None:
+            self.__optimizer.load_state_dict(state_dict["optimizer"])
+        if self.__lr_scheduler is not None:
+            self.__lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
         self.__epoch = state_dict["epoch"]
         self.__step = state_dict["step"]
         self.__duration = state_dict["duration"]
