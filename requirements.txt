@@ -1,7 +1,8 @@
 numpy
+pyyaml
 torch
 torchvision
 torchmetrics[image]
 tqdm
 wandb
-pyyaml
+xxhash
