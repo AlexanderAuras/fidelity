@@ -78,7 +78,6 @@ def main() -> None:
             config=load_config(CONFIG_PATH),
             dir=tempfile.gettempdir(),
             save_code=True,
-            settings=wandb.Settings(code_dir=str(Path(__file__).parents[1])),
             anonymous="never",
             mode="online",
             force=True,

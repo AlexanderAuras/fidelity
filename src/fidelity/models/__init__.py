@@ -21,6 +21,11 @@ def build_model() -> torch.nn.Module:
                 latent_noise_scale=wandb.config["model"]["latent_noise_delta"],
             )
         case "SimpleDescent":
-            return SimpleDescent(wandb.config["model"]["iterations"], wandb.config["model"]["lr"], wandb.config["model"]["img_weight"])
+            return SimpleDescent(
+                wandb.config["model"]["iterations"],
+                wandb.config["model"]["lr"],
+                wandb.config["model"]["img_weight"],
+                wandb.config["model"]["regularizer"],
+            )
         case _ as mdl:
             raise ValueError(f"Unknown model {mdl}")
