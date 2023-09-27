@@ -27,7 +27,7 @@ class ForeignVAELoss(LossFunc):
     def __init__(self) -> None:
         super().__init__()
         self.__gmm_centers, self.__gmm_std = set_gmm_centers(wandb.config["training"]["loss_fn"]["latent_dim"], wandb.config["training"]["loss_fn"]["num_clusters"])
-        self.__ks_weight, self.__cv_weight = estimate_loss_coefficients(wandb.config["training"]["nograd_batch_size"], self.__gmm_centers, self.__gmm_std, num_samples=64)
+        self.__ks_weight, self.__cv_weight = estimate_loss_coefficients(wandb.config["training"]["grad_batch_size"], self.__gmm_centers, self.__gmm_std, num_samples=64)
 
     def __call__(self, z: Sequence[Any], y: Sequence[Any]) -> Iterable[torch.Tensor]:
         return get_vaeloss(z[0], z[1], y[0], self.__ks_weight, self.__cv_weight, wandb.config["training"]["loss_fn"]["img_loss_weight"], self.__gmm_centers, self.__gmm_std)[:1]

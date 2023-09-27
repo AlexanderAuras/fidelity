@@ -33,7 +33,7 @@ class ExperimentLogger:
             wandb.define_metric(f"val.{name}.MSE", summary="min")
             wandb.define_metric(f"val.{name}.PSNR", summary="max")
             wandb.define_metric(f"val.{name}.SSIM", summary="max")
-            wandb.define_metric(f"val.{name}.FID", summary="max")
+            wandb.define_metric(f"val.{name}.FID", summary="min")
             wandb.define_metric(f"val.{name}.residual_mean")
             wandb.define_metric(f"val.{name}.residual_std")
         for name in map(lambda x: x["name"], wandb.config["data"]["test_datasets"]):
@@ -41,7 +41,7 @@ class ExperimentLogger:
             wandb.define_metric(f"test.{name}.MSE", summary="min")
             wandb.define_metric(f"test.{name}.PSNR", summary="max")
             wandb.define_metric(f"test.{name}.SSIM", summary="max")
-            wandb.define_metric(f"test.{name}.FID", summary="max")
+            wandb.define_metric(f"test.{name}.FID", summary="min")
             wandb.define_metric(f"test.{name}.residual_mean")
             wandb.define_metric(f"test.{name}.residual_std")
         for name in map(lambda x: x["name"], wandb.config["data"]["pred_datasets"]):
@@ -49,7 +49,7 @@ class ExperimentLogger:
             wandb.define_metric(f"pred.{name}.MSE", summary="min")
             wandb.define_metric(f"pred.{name}.PSNR", summary="max")
             wandb.define_metric(f"pred.{name}.SSIM", summary="max")
-            wandb.define_metric(f"pred.{name}.FID", summary="max")
+            wandb.define_metric(f"pred.{name}.FID", summary="min")
             wandb.define_metric(f"pred.{name}.residual_mean")
             wandb.define_metric(f"pred.{name}.residual_std")
 
@@ -142,7 +142,7 @@ class ExperimentLogger:
             {
                 "test": {
                     dataset_name: {
-                        "Loss": self.__loss / dataloader_len,
+                        "loss": self.__loss / dataloader_len,
                         "MSE": self.__mse / dataloader_len,
                         "PSNR": self.__psnr / dataloader_len,
                         "SSIM": self.__ssim / dataloader_len,
@@ -152,6 +152,7 @@ class ExperimentLogger:
                         "x": [wandb.Image(img) for img in self.__inputs[:EXAMPLE_COUNT]],
                         "y": [wandb.Image(img) for img in self.__targets[:EXAMPLE_COUNT]],
                         "z": [wandb.Image(img) for img in self.__outputs[:EXAMPLE_COUNT]],
+                        "residual": [wandb.Image(torch.abs(self.__outputs[i] - self.__targets[i])) for i in range(EXAMPLE_COUNT)],
                     }
                 },
             }

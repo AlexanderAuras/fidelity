@@ -9,7 +9,7 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
-        {
+        /*{
             "name": "Python: Resume (local)",
             "type": "python",
             "request": "launch",
@@ -20,7 +20,7 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false
-        },
+        },*/
         {
             "name": "Python: main.py (local)",
             "type": "python",
@@ -29,28 +29,14 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
-        {
+        /*{
             "name": "Python: main.py (SLURM)",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/.vscode/submit_slurm.py",
-            "args": [
-                "${workspaceFolder}/src/fidelity/main.py"
-            ],
+            "code": "exec('import subprocess') or subprocess.run(['bash', '.vscode/job.sh'])",
             "console": "integratedTerminal",
             "justMyCode": false
-        },
-        {
-            "name": "Python: Sweep (SLURM)",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/.vscode/submit_slurm.py",
-            "args": [
-                "${workspaceFolder}/src/fidelity/sweep.py"
-            ],
-            "console": "integratedTerminal",
-            "justMyCode": false
-        }
+        }*/
     ],
     "inputs": [
         {

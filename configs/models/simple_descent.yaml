@@ -2,4 +2,5 @@ name: SimpleDescent
 iterations: 100
 lr: 1e0
 img_weight: 5e-3
-regularizer: none
+regularizer: TV-iso
+reg_weight: 1e-4

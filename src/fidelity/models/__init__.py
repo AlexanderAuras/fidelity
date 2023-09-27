@@ -26,6 +26,7 @@ def build_model() -> torch.nn.Module:
                 wandb.config["model"]["lr"],
                 wandb.config["model"]["img_weight"],
                 wandb.config["model"]["regularizer"],
+                wandb.config["model"]["reg_weight"],
             )
         case _ as mdl:
             raise ValueError(f"Unknown model {mdl}")

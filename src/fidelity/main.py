@@ -56,8 +56,8 @@ def main() -> None:
     warnings.filterwarnings(message=r"[^ ]+ does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True).*", action="ignore")
 
     #### Initialize wandb ####
+    logging.getLogger(PROJECT_NAME).info("Initializing wandb")
     if args.command == "resume":  # TODO Test
-        logging.getLogger(PROJECT_NAME).info("Initializing wandb")
         _ = wandb.init(
             project=PROJECT_NAME,
             id=args.run_id if args.command == "resume" else wandb.util.generate_id(),
@@ -81,9 +81,9 @@ def main() -> None:
             anonymous="never",
             mode="online",
             force=True,
-            resume="never",  # TODO Check
+            resume="must" if "WANDB_RUN_ID" in os.environ else "never",  # TODO Check
         )
-        logging.getLogger(PROJECT_NAME).info(f"Starting run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
+        logging.getLogger(PROJECT_NAME).info(f"{'Starting' if 'WANDB_RUN_ID' in os.environ else 'Resuming'} run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
 
     #### Setup determinism ####
     if wandb.config["seed"] is not None:
