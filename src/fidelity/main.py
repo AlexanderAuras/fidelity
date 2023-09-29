@@ -1,18 +1,19 @@
 import argparse
 import logging
 import os
-import subprocess
+import sys
 import tempfile
 import warnings
 from pathlib import Path
 from types import FrameType
-from typing import Any, Optional, Sequence, Tuple, cast
+from typing import Any, Dict, Optional, Sequence, Tuple, cast
 
 import torch
 import torch.utils.data
 import wandb
 import wandb.sdk
 import wandb.util
+import yaml
 
 from fidelity.build_loss_fn import build_loss_fn
 from fidelity.build_lr_scheduler import build_lr_scheduler
@@ -37,12 +38,29 @@ def main() -> None:
     sub_argparsers = argparser.add_subparsers()
     run_argparser = sub_argparsers.add_parser("run")
     run_argparser.set_defaults(command="run")
-    resume_argparser = sub_argparsers.add_parser("resume")
+    resume_argparser = sub_argparsers.add_parser("resume")  # TODO Test
     resume_argparser.set_defaults(command="resume")
     resume_argparser.add_argument("run_id")
+    dump_cfg_argparser = sub_argparsers.add_parser("dump-sweep-config")
+    dump_cfg_argparser.set_defaults(command="dump-sweep-config")
     args = argparser.parse_args()
     if not hasattr(args, "command"):
         args.command = "run"
+
+    #### Dump sweep config and exit ####
+    if args.command == "dump-sweep-config":
+        convert = lambda x: {"parameters": {k: convert(v) for k, v in x.items()}} if isinstance(x, Dict) else {"value": x}
+        sweep_config = {
+            "program": Path(__file__).name,
+            "method": "grid/random/bayes",
+            "metric": {
+                "name": "???",
+                "goal": "minimize/maximize",
+            },
+            **convert(load_config(CONFIG_PATH)),
+        }
+        yaml.dump(sweep_config, sys.stdout)
+        exit(0)
 
     #### Setup logging ####
     logging.basicConfig(
@@ -57,23 +75,26 @@ def main() -> None:
 
     #### Initialize wandb ####
     logging.getLogger(PROJECT_NAME).info("Initializing wandb")
-    if args.command == "resume":  # TODO Test
+    if args.command == "resume" or "WANDB_RUN_ID" in os.environ:
         _ = wandb.init(
             project=PROJECT_NAME,
-            id=args.run_id if args.command == "resume" else wandb.util.generate_id(),
+            id=args.run_id if args.command == "resume" else os.environ["WANDB_RUN_ID"],
+            group=None if args.command == "resume" else os.environ["WANDB_SWEEP_ID"],
+            job_type=None if args.command == "resume" else "HPO",
             dir=tempfile.gettempdir(),
             anonymous="never",
             mode="online",
             force=True,
             resume="must",
         )
-        logging.getLogger(PROJECT_NAME).info(f"Resuming run {args.run_id}")
+        logging.getLogger(PROJECT_NAME).info(f"{'Resuming' if args.command == 'resume' else 'starting sweep-'} run {cast(wandb.sdk.wandb_run.Run, wandb.run).id}")
     else:
         logging.getLogger(PROJECT_NAME).info("Initializing wandb")
         _ = wandb.init(
             project=PROJECT_NAME,
             id=wandb.util.generate_id(),
             group=None,
+            job_type="default",
             tags=[],
             config=load_config(CONFIG_PATH),
             dir=tempfile.gettempdir(),
@@ -81,17 +102,16 @@ def main() -> None:
             anonymous="never",
             mode="online",
             force=True,
-            resume="must" if "WANDB_RUN_ID" in os.environ else "never",  # TODO Check
+            resume="never",
         )
-        logging.getLogger(PROJECT_NAME).info(f"{'Starting' if 'WANDB_RUN_ID' in os.environ else 'Resuming'} run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
+        logging.getLogger(PROJECT_NAME).info(f"Starting run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
+    if not wandb.config["learned"]:
+        logging.getLogger(PROJECT_NAME).warn(f"Executing run without learning phase")
 
     #### Setup determinism ####
     if wandb.config["seed"] is not None:
         logging.getLogger(PROJECT_NAME).info(f"Setting up determinism with seed {wandb.config['seed']}")
         setup_determinism(wandb.config["seed"])
-
-    if not wandb.config["learned"]:
-        logging.getLogger(PROJECT_NAME).info(f"ATTENTION: Executing run without learning phase!")
 
     #### Load datasets ####
     logging.getLogger(PROJECT_NAME).info("Loading datasets")

@@ -40,4 +40,4 @@ def build_loss_fn() -> LossFunc:
         case "ForeignVAELoss":
             return ForeignVAELoss()
         case _ as fn:
-            raise ValueError(f"Unknown loss function {fn}")
+            raise ValueError(f'Unknown loss function "{fn}"')

@@ -7,4 +7,4 @@ def build_optimizer(model: torch.nn.Module) -> torch.optim.Optimizer:
         case "Adam":
             return torch.optim.Adam(model.parameters(), lr=wandb.config["training"]["optimizer"]["lr"])
         case _ as opt:
-            raise ValueError(f"Unknown optimizer {opt}")
+            raise ValueError(f'Unknown optimizer "{opt}"')

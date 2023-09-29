@@ -29,4 +29,4 @@ def build_model() -> torch.nn.Module:
                 wandb.config["model"]["reg_weight"],
             )
         case _ as mdl:
-            raise ValueError(f"Unknown model {mdl}")
+            raise ValueError(f'Unknown model "{mdl}"')

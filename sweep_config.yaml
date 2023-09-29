@@ -1,0 +1,100 @@
+method: bayes
+metric:
+  goal: minimize
+  name: test.MNIST.loss.min
+parameters:
+  data:
+    parameters:
+      img_size:
+        value:
+        - 32
+        - 32
+      noise_level:
+        value: 0.05
+      pred_datasets:
+        value:
+        - name: MNIST
+          train_split: 0.8
+        - name: Kuzushiji
+          train_split: 0.8
+        - name: FashionMNIST
+          train_split: 0.8
+      test_datasets:
+        value:
+        - name: MNIST
+          train_split: 0.8
+        - name: Kuzushiji
+          train_split: 0.8
+        - name: FashionMNIST
+          train_split: 0.8
+      train_dataset:
+        parameters:
+          name:
+            value: MNIST
+          train_split:
+            value: 0.8
+      val_datasets:
+        value:
+        - name: MNIST
+          train_split: 0.8
+        - name: Kuzushiji
+          train_split: 0.8
+        - name: FashionMNIST
+          train_split: 0.8
+  device:
+    value: cuda:0
+  learned:
+    value: false
+  model:
+    parameters:
+      img_weight:
+        distribution: uniform
+        min: 0.000001
+        max: 100
+      iterations:
+        distribution: int_uniform
+        min: 10
+        max: 1000
+      lr:
+        distribution: uniform
+        min: 0.000001
+        max: 10
+      name:
+        value: SimpleDescent
+      reg_weight:
+        distribution: uniform
+        min: 0.000001
+        max: 100
+      regularizer:
+        value: TV-iso
+  seed:
+    value: 1234
+  training:
+    parameters:
+      epochs:
+        value: 0
+      grad_batch_size:
+        value: 64
+      loss_fn:
+        parameters:
+          img_loss_weight:
+            value: 0.0005
+          latent_dim:
+            value: 1024
+          name:
+            value: MSE
+          num_clusters:
+            value: 1
+      lr_scheduler:
+        parameters:
+          name:
+            value: ReduceLROnPlateau
+      nograd_batch_size:
+        value: 64
+      optimizer:
+        parameters:
+          lr:
+            value: 0.001
+          name:
+            value: Adam
+program: main.py

@@ -16,4 +16,4 @@ def build_lr_scheduler(optimizer: torch.optim.Optimizer) -> torch.optim.lr_sched
         case "ReduceLROnPlateau":
             return cast(torch.optim.lr_scheduler._LRScheduler, torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer))  # type: ignore
         case _ as lrs:
-            raise ValueError(f"Unknown learning rate scheduler {lrs}")
+            raise ValueError(f'Unknown learning rate scheduler "{lrs}"')

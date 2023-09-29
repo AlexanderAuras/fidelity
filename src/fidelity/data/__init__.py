@@ -81,7 +81,7 @@ def load_dataset(subset: Union[Literal["train"], Literal["val"], Literal["test"]
                 case "pred":
                     return RandomVecDataset(dataset_config["shape"], dataset_config["count"])
         case _ as ds:
-            raise ValueError(f"Unknown dataset {ds}")
+            raise ValueError(f'Unknown dataset "{ds}"')
 
     unified_dataset = FeatureModificationDataset(dataset, 0, 0)
     transform = torchvision.transforms.Compose(

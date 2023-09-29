@@ -119,16 +119,6 @@ class Trainer:
                     return False
                 if max_duration is not None and self.__duration >= max_duration:
                     return False
-                # Update SLURM job name
-                try:
-                    fraction = max(
-                        self.__epoch / (max_epochs - 1) if max_epochs is not None else 0.0,
-                        self.__step / (max_steps - 1) if max_steps is not None else 0.0,
-                        self.__duration.total_seconds() / max_duration.total_seconds() if max_duration is not None else 0.0,
-                    )
-                    subprocess.run(["scontrol", "update", "job", str(os.environ["SLURM_JOB_ID"]), f"JobName={os.environ['SLURM_JOB_NAME']} {fraction*100.0:3.0f}%"])
-                except:
-                    pass
         self.__train_idx = 0
         self.__epoch += 1
         if max_epochs is not None and self.__epoch >= max_epochs:

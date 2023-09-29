@@ -4,7 +4,6 @@ import torch
 import wandb
 
 from fidelity.foreign.loss import estimate_loss_coefficients, get_vaeloss
-from fidelity.foreign.utils import set_gmm_centers
 
 
 class SimpleDescent(torch.nn.Module):
@@ -12,7 +11,7 @@ class SimpleDescent(torch.nn.Module):
         super().__init__()
         self.__iterations = iterations
         self.__lr = lr
-        self.__gmm_centers, self.__gmm_std = set_gmm_centers(1, 1)
+        self.__gmm_centers, self.__gmm_std = torch.tensor([[0.0]], device=wandb.config["device"]), 1
         self.__ks_weight, self.__cv_weight = estimate_loss_coefficients(wandb.config["training"]["grad_batch_size"], self.__gmm_centers, self.__gmm_std, num_samples=64)
         self.__img_weight = img_weight
         match regularizer:
@@ -20,11 +19,11 @@ class SimpleDescent(torch.nn.Module):
                 self.__regularizer = lambda x: 0.0
             case "TV-iso":
                 eps = 1e-7
-                self.__regularizer = lambda x: (torch.nn.functional.conv2d(x, torch.tensor([[[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]], [[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]], dtype=x.dtype, device=x.device), padding=1).pow(2.0).sum(dim=1) + eps).sqrt().sum()
+                self.__regularizer = lambda x: (torch.nn.functional.conv2d(x, torch.tensor([[[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]], [[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]], dtype=x.dtype, device=x.device), padding=1).pow(2.0).sum(dim=1) + eps).sqrt().mean()
             case "TV-aniso":
-                self.__regularizer = lambda x: torch.nn.functional.conv2d(x, torch.tensor([[[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]], [[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]], dtype=x.dtype, device=x.device), padding=1).abs().sum()
+                self.__regularizer = lambda x: torch.nn.functional.conv2d(x, torch.tensor([[[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]], [[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]], dtype=x.dtype, device=x.device), padding=1).abs().mean()
             case _ as reg:
-                raise ValueError(f"Unknown regularizer {reg}")
+                raise ValueError(f'Unknown regularizer "{reg}"')
         self.reg_weight = reg_weight
 
     def forward(self, f: torch.Tensor) -> torch.Tensor:
