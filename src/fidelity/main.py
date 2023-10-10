@@ -43,6 +43,8 @@ def main() -> None:
     resume_argparser.add_argument("run_id")
     dump_cfg_argparser = sub_argparsers.add_parser("dump-sweep-config")
     dump_cfg_argparser.set_defaults(command="dump-sweep-config")
+    log_code_argparser = sub_argparsers.add_parser("log-code")
+    log_code_argparser.set_defaults(command="log-code")
     args = argparser.parse_args()
     if not hasattr(args, "command"):
         args.command = "run"
@@ -61,6 +63,8 @@ def main() -> None:
         }
         yaml.dump(sweep_config, sys.stdout)
         exit(0)
+    elif args.command == "log-code":
+        sys.argv = sys.argv[0:1] + ["run"]  # wandb saves arguments, so we have to change them here
 
     #### Setup logging ####
     logging.basicConfig(
@@ -75,7 +79,7 @@ def main() -> None:
 
     #### Initialize wandb ####
     logging.getLogger(PROJECT_NAME).info("Initializing wandb")
-    if args.command == "resume" or "WANDB_RUN_ID" in os.environ:
+    if args.command == "resume" or "WANDB_SWEEP_ID" in os.environ:
         _ = wandb.init(
             project=PROJECT_NAME,
             id=args.run_id if args.command == "resume" else os.environ["WANDB_RUN_ID"],
@@ -87,9 +91,8 @@ def main() -> None:
             force=True,
             resume="must",
         )
-        logging.getLogger(PROJECT_NAME).info(f"{'Resuming' if args.command == 'resume' else 'starting sweep-'} run {cast(wandb.sdk.wandb_run.Run, wandb.run).id}")
+        logging.getLogger(PROJECT_NAME).info(f"{'Resuming ' if args.command == 'resume' else 'Starting sweep-'}run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
     else:
-        logging.getLogger(PROJECT_NAME).info("Initializing wandb")
         _ = wandb.init(
             project=PROJECT_NAME,
             id=wandb.util.generate_id(),
@@ -105,6 +108,14 @@ def main() -> None:
             resume="never",
         )
         logging.getLogger(PROJECT_NAME).info(f"Starting run {cast(wandb.sdk.wandb_run.Run, wandb.run).name}")
+
+    #### Log code and exit ####
+    if args.command == "log-code":
+        logging.getLogger(PROJECT_NAME).info(f"Code logged")
+        logging.getLogger(PROJECT_NAME).info(f"Done")
+        wandb.finish()
+        exit(0)
+
     if not wandb.config["learned"]:
         logging.getLogger(PROJECT_NAME).warn(f"Executing run without learning phase")
 
@@ -269,6 +280,7 @@ def main() -> None:
                 "RNGs": get_rng_states(),
                 "test_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
                 "pred_dataloader": {name: cast(torch.Generator, cast(torch.utils.data.RandomSampler, dataloader.sampler).generator).get_state() for name, dataloader in val_dataloaders.items()},
+                "trainer": trainer.state_dict(),
                 **(
                     {
                         "train_dataloader": cast(torch.Generator, cast(torch.utils.data.RandomSampler, cast(torch.utils.data.DataLoader[Tuple[Sequence[Any], Sequence[Any]]], train_dataloader).sampler).generator).get_state(),

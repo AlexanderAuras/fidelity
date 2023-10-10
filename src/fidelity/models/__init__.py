@@ -23,10 +23,12 @@ def build_model() -> torch.nn.Module:
         case "SimpleDescent":
             return SimpleDescent(
                 wandb.config["model"]["iterations"],
-                wandb.config["model"]["lr"],
-                wandb.config["model"]["img_weight"],
+                10.0 ** wandb.config["model"]["lr_exp"],
+                10.0 ** wandb.config["model"]["img_weight_exp"],
                 wandb.config["model"]["regularizer"],
-                wandb.config["model"]["reg_weight"],
+                10.0 ** wandb.config["model"]["reg_weight_exp"],
+                10.0 ** wandb.config["model"]["ks_weight_exp"],
+                10.0 ** wandb.config["model"]["cv_weight_exp"],
             )
         case _ as mdl:
             raise ValueError(f'Unknown model "{mdl}"')

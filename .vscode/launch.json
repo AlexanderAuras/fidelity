@@ -9,7 +9,7 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
-        /*{
+        {
             "name": "Python: Resume (local)",
             "type": "python",
             "request": "launch",
@@ -20,7 +20,7 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false
-        },*/
+        },
         {
             "name": "Python: main.py (local)",
             "type": "python",
@@ -29,20 +29,30 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
-        /*{
+        {
             "name": "Python: main.py (SLURM)",
             "type": "python",
             "request": "launch",
-            "code": "exec('import subprocess') or subprocess.run(['bash', '.vscode/job.sh'])",
+            "code": "exec('import subprocess') or subprocess.run(['wandb', 'launch', '-q', '${input:queue}', '--async', '-j', 'job-https___github.com_AlexanderAuras_fidelity.git_src_fidelity_main.py'])",
             "console": "integratedTerminal",
             "justMyCode": false
-        }*/
+        }
     ],
     "inputs": [
         {
             "id": "run_id",
             "description": "W&B Run ID",
             "type": "promptString"
+        },
+        {
+            "id": "queue",
+            "description": "W&B Queue",
+            "type": "pickString",
+            "options": [
+                "CPU",
+                "OMNI - Single GPU",
+                "OMNI - Multi-GPU"
+            ]
         }
     ]
 }

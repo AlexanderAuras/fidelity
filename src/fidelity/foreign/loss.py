@@ -39,7 +39,8 @@ def get_vaeloss(predicted_images: torch.Tensor, latent_vectors: torch.Tensor, tr
     cs_loss = mean_squared_covariance_gmm(latent_vectors, gmm_centers, gmm_std)
     weighted_ksloss = ks_weight * ks_loss
     weighted_cov_loss = cv_weight * cs_loss
-    weighted_imageloss = 1 / image_loss_weight * image_loss
+    # weighted_imageloss = 1 / image_loss_weight * image_loss
+    weighted_imageloss = image_loss_weight * image_loss
     losses = weighted_ksloss + weighted_cov_loss + weighted_imageloss
     loss_mean = losses.mean().cuda()
     return loss_mean, weighted_ksloss, weighted_cov_loss, weighted_imageloss

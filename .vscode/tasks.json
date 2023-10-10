@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Dump sweep config",
+            "type": "shell",
+            "command": "python src/fidelity/main.py dump-sweep-config",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": false,
+                "close": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Log code to wandb",
+            "type": "shell",
+            "command": "python src/fidelity/main.py log-code",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": false,
+                "close": true,
+                "clear": true
+            }
+        }
+    ]
+}

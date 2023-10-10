@@ -47,24 +47,32 @@ parameters:
     value: false
   model:
     parameters:
-      img_weight:
+      img_weight_exp:
         distribution: uniform
-        min: 0.000001
-        max: 100
+        min: -6
+        max: 2
       iterations:
         distribution: int_uniform
         min: 10
         max: 1000
-      lr:
+      lr_exp:
         distribution: uniform
-        min: 0.000001
-        max: 10
+        min: -6
+        max: 1
       name:
         value: SimpleDescent
-      reg_weight:
+      reg_weight_exp:
         distribution: uniform
-        min: 0.000001
-        max: 100
+        min: -6
+        max: 2
+      ks_weight_exp:
+        distribution: uniform
+        min: -6
+        max: 3
+      cv_weight_exp:
+        distribution: uniform
+        min: -6
+        max: 3
       regularizer:
         value: TV-iso
   seed:
